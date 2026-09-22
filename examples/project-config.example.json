@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "default_project": "/absolute/path/to/your/project"
+}

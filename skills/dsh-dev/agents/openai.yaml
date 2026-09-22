@@ -1,0 +1,6 @@
+interface:
+  display_name: "呼叫蓝色大肥鱼"
+  short_description: "通过 Codex 调度 DeepSeek Harness，完成开发、审查与迭代。"
+  default_prompt: "使用 $dsh-dev，通过 dsh 完成当前开发任务并独立验收。"
+policy:
+  allow_implicit_invocation: true
