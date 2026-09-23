@@ -1,159 +1,173 @@
-# 🐋 呼叫蓝色大肥鱼
+# Call the Whale 🐋
 
-**通过 Codex 调度 DeepSeek Harness，完成开发、审查与迭代。**
+**English** | [简体中文](README.zh-CN.md)
 
-大肥鱼负责开工，Codex 负责验收。
+**A Codex skill that delegates development to DeepSeek Harness, checks the results, and follows up on fixes.**
 
-> **完全访问权限说明**
+Describe the task in Codex. Let the whale get to work.
+
+Call the Whale connects Codex's task planning and independent review with [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) running in the Codex desktop app's embedded browser. Codex prepares the task, follows dsh's progress, inspects the actual changes, and requests corrections when the result does not meet the acceptance criteria.
+
+> **Full access is the intended operating mode.** dsh may read and write local files, run terminal commands, and access the network. Its effective access depends on dsh settings, the operating-system account, and OS restrictions—not just the selected project directory. Use it only in an environment you trust and are willing to authorize.
 >
-> 本 skill 的预期使用模式会给予 dsh 完全访问权限。dsh 执行任务时可能读写本机文件、运行终端命令并访问网络；实际范围取决于 dsh 的权限配置、运行账户及操作系统限制。请仅在你信任并愿意授权的环境中使用。
+> **Set up dsh first.** Before using this skill, run dsh yourself at least once, configure your API key, and successfully send a request and receive a model response.
 
-安装不会修改 dsh 的全局权限设置。首次需要启用完全访问时，Codex 应先说明影响并核对授权；安装本身不是授权。它不是严格限制在项目目录内的安全沙箱，也不能绕过操作系统权限。完全访问不扩大任务范围：仍须保护已有修改，不删除无关文件、不发布其他项目、不操作其他账户。
+Installing the skill does **not** change dsh's global permission settings or grant authorization. Before first enabling full access, Codex must explain its effects and check your authorization. Existing authorization is reused within its scope; required tool or UI confirmations still apply. Full access does not authorize work outside your task or bypass OS restrictions.
 
-这是社区项目，**并非 DeepSeek 或 OpenAI 官方产品**。不附带模型额度，不保证所有任务成功或完全无人值守；用户自行承担 dsh 模型接口费用，Codex 的使用限制也独立适用。
+This is a **community project, not an official DeepSeek or OpenAI product**. You pay for dsh model API usage; Codex usage limits apply separately. Successful completion and unattended operation are not guaranteed.
 
-| 名称 | 用途 |
-|---|---|
-| 呼叫蓝色大肥鱼 | 项目品牌和 Codex 中的显示名称 |
-| `call-the-whale` | GitHub 仓库名称 |
-| `dsh-dev` | Skill 目录名与 SKILL.md 技术标识 |
-| `$dsh-dev` | **实际调用方式**，不会因品牌改名而改变 |
+## What it does
 
-**English:** A community skill for the Codex desktop app. Codex delegates development to an already configured DeepSeek Harness through its embedded browser, then checks the actual changes and tests independently. Invocation remains `$dsh-dev`. The intended mode grants dsh full access; model API charges are the user's responsibility. This is not an official DeepSeek or OpenAI product.
+- **Opens or reuses dsh:** finds a ready service, starts one when needed, and opens its actual authenticated URL in Codex's embedded browser.
+- **Prepares the work:** turns your request and project constraints into a task with explicit scope and acceptance criteria.
+- **Chooses suitable capabilities:** considers plugins, GitHub research, workflows, Agent Teams, and independent reviews when useful and available.
+- **Checks the result:** inspects files and diffs, runs relevant checks, and sends specific feedback to dsh for corrections.
+- **Handles interruptions:** distinguishes context limits, truncated output, rate limits, and exhausted account credit; preserves progress and avoids duplicate work.
 
-## 适用环境与前置条件
+Ordinary development requests are not automatically sent to dsh. Invoke **`$dsh-dev`** or explicitly ask Codex to use dsh. Asking only to open dsh does not submit a development task.
 
-**使用本 skill 前，请先自行运行并使用至少一次 DeepSeek Harness（dsh），完成 API key 配置，并确认能够正常发送请求、获得模型回复。**
+## Requirements
 
-按照 [dsh 官方说明](https://github.com/deepseek-ai/deepseek-harness)完成首次使用。本 skill 使用已经配置好的 dsh，不负责申请 API key、充值或提取其他应用的凭据。**不要把 key 粘贴到 Codex 对话、仓库文件、Issue 或截图中。**
+- **Codex desktop with embedded-browser display and interaction tools.** A client that only loads skills or opens links cannot run the full workflow.
+- Tools and permissions to read the target project, execute terminal commands, and follow running processes.
+- A working dsh configuration, including **one successful model conversation before using this skill**. Follow the [official dsh instructions](https://github.com/deepseek-ai/deepseek-harness).
+- The Node.js and npm/npx versions required by your dsh version.
+- Python 3.9+ for the standard-library helper scripts. Git and project-specific build/test tools as needed.
 
-需要：
+The skill does not obtain API keys, add credit, or extract credentials from other apps. **Never paste API keys into Codex messages, repository files, issues, or screenshots.** If configuration or authentication is missing, complete it in dsh before delegating work. Opening the page alone does not send a model test request; a listed model name is not proof that its API works.
 
-- Codex 桌面应用，以及该环境实际提供的**内置浏览器展示与网页交互工具**。仅能加载 skills 或打开链接不够；不能宣称所有 skills 客户端可直接使用。
-- 可读取目标项目、执行终端命令和跟进进程的工具权限。
-- dsh 当前版本所要求的 Node.js 和 npm/npx；本项目不固定某个作者的运行时或安装路径。
-- Python 3.9+，用于标准库辅助脚本；Git 和其他构建/测试工具按目标项目需要提供。
+## Install
 
-Codex 会先检查工具、实际服务及非敏感模型状态。缺配置或认证失败时，请回到 dsh 完成配置，再继续任务；不会为检查而输出密钥，也不会因界面列出了模型名就宣称接口可用。仅打开页面时不发送模型测试请求。
-
-## 安装
-
-推荐使用 Codex 自带的 [skill-installer](https://github.com/openai/skills/tree/main/skills/.system/skill-installer)。在 Codex 中发送：
+Ask Codex to use its bundled [skill-installer](https://github.com/openai/skills/tree/main/skills/.system/skill-installer):
 
 ```text
-请使用 $skill-installer，从 https://github.com/XSY-28/call-the-whale/tree/main/skills/dsh-dev 安装此 skill，保留目录名 dsh-dev。
+Use $skill-installer to install the skill from
+https://github.com/XSY-28/call-the-whale/tree/main/skills/dsh-dev.
+Keep the skill directory name dsh-dev.
 ```
 
-安装器通常将它放到 `$CODEX_HOME/skills/dsh-dev`；未设置 CODEX_HOME 时为 `~/.codex/skills/dsh-dev`。下一轮对话可使用 `$dsh-dev`。以你的安装器报告的实际位置为准，避免在多个技能搜索目录重复安装。
+The usual destination is `$CODEX_HOME/skills/dsh-dev`, or `~/.codex/skills/dsh-dev` when `CODEX_HOME` is unset. Use the location reported by your installer and avoid duplicate installations. Try `$dsh-dev` in the next conversation turn.
 
-需要固定版本时，将上面链接的 `main` 换成已发布标签，例如 `v0.1.0`。安装包只取 `skills/dsh-dev`，不是整个仓库，也不是名为 `call-the-whale` 的 skill。安装器遇到同名目录会停止，不覆盖旧安装；已有安装请按下面的更新方法处理。
+To pin a release, replace `main` in the URL with a published tag such as `v0.1.0`. Install **`skills/dsh-dev`**, not the repository root. The installer stops if the destination already exists; use the [update instructions](#update-and-uninstall) for an existing installation.
 
-本次实测使用官方安装器已支持的 Git 方法。若下载遇到本机 Python 证书错误，可让 Codex 检查该运行时的证书配置，或使用安装器的 `--method git`；不要关闭 HTTPS 证书验证。
+The public installation check used the official installer's Git method. If your Python runtime has a certificate error during download, fix its certificate setup or use the installer's `--method git` option. Do not disable HTTPS certificate verification.
 
-## 第一次使用与快速开始
+## Quick start
 
-1. **使用本 skill 前，请先自行运行并使用至少一次 DeepSeek Harness（dsh），完成 API key 配置，并确认能够正常发送请求、获得模型回复。**
-2. 安装后，先让 Codex 只打开页面，确认你的桌面环境有需要的浏览器能力：
-
-   ```text
-   使用 $dsh-dev，只打开 dsh，不提交开发任务。
-   ```
-
-3. 首次委托前阅读并授权预期权限：**本 skill 的预期使用模式会给予 dsh 完全访问权限。dsh 执行任务时可能读写本机文件、运行终端命令并访问网络；实际范围取决于 dsh 的权限配置、运行账户及操作系统限制。请仅在你信任并愿意授权的环境中使用。** 已有覆盖当前范围的有效授权不重复询问，但 dsh 网页和执行工具要求的当次确认仍须遵守。
-4. 指定你的项目及验收目标。以下路径都是占位值，替换为自己的绝对路径：
-
-   ```text
-   使用 $dsh-dev，在 /absolute/path/to/project 修复登录表单的重复提交问题，保留现有接口，补充并运行相关测试。我理解并授权本次任务使用 dsh 完全访问权限。
-   ```
-
-继续已有任务：
+After completing dsh's first-run setup and getting a successful model response, check browser access:
 
 ```text
-使用 $dsh-dev，继续刚才修复登录表单的任务，沿用原会话的项目和验收标准。
+Use $dsh-dev to open dsh only. Do not submit a development task.
 ```
 
-只打开时，缺少默认项目不会阻止打开，也不会自行提交任务；尚未配置模型时可展示页面供你自行配置，但不宣称模型已可用。继续任务先找原会话，不因当前默认值变化而换项目。任务不唯一或新目录与旧会话冲突时才澄清。
-
-## 项目目录与个人配置
+Then delegate a scoped task. Replace the path below with your project's absolute path, and authorize full access only after reading the notice above:
 
 ```text
-使用 $dsh-dev，将 /absolute/path/to/project 设为默认项目。
-使用 $dsh-dev，修改默认项目为 /absolute/path/to/another-project。
-使用 $dsh-dev，清除默认项目。
+Use $dsh-dev in /absolute/path/to/project to fix duplicate submissions
+in the login form. Preserve the existing API, add relevant regression
+coverage, and run the tests. I understand and authorize dsh full access
+for this task.
 ```
 
-当前请求明确指定的目录优先，只对当前任务生效。新任务未指定目录时，读取该用户自己的默认项目；没有默认值先询问，得到答复后再提交。不会把 Codex 当前目录、dsh 启动目录或网页上次 workspace 当默认值。
+**Illustrative flow, not a recorded demo:** Codex confirms the workspace and prepares the task → dsh works on the fix → Codex checks the diff and behavior → failing acceptance checks become specific follow-up requests → Codex reports the verified outcome or a concrete blocker.
 
-指定具体文件时保留该文件为任务对象，再从项目资料确认所属根目录；归属不明确时询问，不直接把父目录当项目根。目录不存在或不可访问时说明原因，不静默换项目。提交前必须确认网页实际选中的完整 workspace 路径。
+Continue the same task:
 
-四类目录互相独立：
+```text
+Use $dsh-dev to continue the login-form fix, keeping the original
+session's project and acceptance criteria.
+```
 
-| 目录 | 内容与生命周期 |
+An open-only request does not require a default project or submit work automatically. Continuing a task uses its original session and project; an ambiguous session or a conflicting new project requires clarification.
+
+## Project selection and local settings
+
+```text
+Use $dsh-dev to set /absolute/path/to/project as my default project.
+Use $dsh-dev to change my default project to /absolute/path/to/another-project.
+Use $dsh-dev to clear my default project.
+```
+
+An explicitly selected project takes priority for the current task and does not overwrite your default. A new task without a project uses your saved default; if none exists, Codex asks before submitting work. It does not silently choose Codex's current directory, the dsh launch directory, or the workspace last shown in the browser.
+
+If you specify a file, it remains the task's target while Codex determines its project root from project evidence. Unclear ownership or an unavailable directory requires clarification. Before submission, Codex checks the full workspace path actually selected in dsh.
+
+| Location | Purpose |
 |---|---|
-| Skill 安装目录 | `SKILL.md`、references、脚本；可更新/卸载 |
-| 目标项目目录 | 用户明确选择或已保存的默认项目；由任务范围约束 |
-| 本机配置目录 | `$CODEX_HOME/dsh-dev/config.json`，否则 `~/.codex/dsh-dev/config.json`；只在明确要求设置/修改/清除默认项目时改变 |
-| 临时/交接目录 | 临时目录由系统 API 创建；长期交接放获准的项目外私有位置，不依赖会被清理的临时目录 |
+| Skill installation | `SKILL.md`, references, and scripts; replaced during updates |
+| Target project | Your explicitly selected or saved default project; changes remain within the task's scope |
+| Local configuration | `$CODEX_HOME/dsh-dev/config.json`, otherwise `~/.codex/dsh-dev/config.json`; changed only when you request setting, changing, or clearing the default |
+| Temporary files and handoffs | Temporary directories are created through OS APIs; durable handoffs belong in an authorized private location outside the project, not an automatically cleaned temporary directory |
 
-[配置示例](examples/project-config.example.json)仅说明格式，不应复制进安装目录或 Git 跟踪文件保存个人配置。设置默认值请使用上述请求或已安装的 `project_config.py`。更新和卸载都保留本机配置及任务交接。
+The [configuration example](examples/project-config.example.json) documents the format. Do not store personal configuration in the skill installation or tracked repository files. Use the requests above or the installed `project_config.py`. Updates and uninstall preserve your configuration and handoffs.
 
-## Codex 与 dsh 如何分工
+## How Codex and dsh work together
 
-Codex 读取需求和项目约束、保护已有修改、选择方式并整理提示词；dsh 默认修改代码。Codex 读取实际文件、diff 和运行证据，独立测试/构建/界面验收。dsh 说“完成”只是验收开始；不通过时反馈具体位置、复现步骤、预期与实际结果，继续定点修正。
+Codex reads the requirements and project constraints, protects existing changes, chooses an execution approach, and prepares the prompt. dsh is the default code writer. Codex independently examines files, diffs, and execution evidence, then performs relevant tests, builds, or UI checks. dsh saying “done” starts the acceptance check; it does not complete it.
 
-- **服务与会话：** 先读当前终端输出，再按需查进程、监听和标签页；只有确认 dsh 已就绪才复用。无可用服务时在已确认项目启动当前版本支持的 `npx @deepseek-ai/dsh web --no-open`；只打开且没有项目时可在系统创建的私有临时目录启动，不将它保存为默认项目。采用实际认证网址，在 Codex 内置浏览器打开，不猜端口、重复启动或额外打开系统浏览器。
-- **插件：** 先判断是否有具体收益，查实际安装与可信来源，评估兼容性、维护、权限和用法；最少安装，区分候选、已安装、运行可用和任务实测。不为简单任务机械搜索，搜索不到也不阻塞。
-- **GitHub 调研：** 成熟功能、陌生集成或复杂设计值得调研时，安排少量高相关候选，核对链接、代码证据、兼容性、维护和许可证；足够后进入实现。stars 不是质量结论，不擅自换技术栈。
-- **执行方式：** 根据任务选择单 Agent、普通子 Agent、workflow、Agent Teams，并独立考虑多 Agent 审评。方式可组合，但先核对当前能力；角色、文件职责、并发与汇总明确后才委托。
-- **权限与推理：** 每次新会话重新检查完全访问权限。推理默认 High，用户指定其他等级则沿用；模型不支持时报告缺口，不擅自换模型。安装和更新不修改 dsh 全局设置。
-- **文件协作：** dsh 写入时 Codex 默认只读验收；要直接修改同批文件先确认停写并交接。多个 Agent 明确文件职责，必要时使用独立 worktree。
+- **Services and sessions:** inspect terminal output first, then processes, listeners, and tabs as needed. Reuse only a confirmed ready dsh service. Otherwise start the current version's supported `npx @deepseek-ai/dsh web --no-open` command in the confirmed project. For an open-only request without a project, a private OS-created temporary directory may be used without saving it as the default. Use the actual authenticated URL; do not guess ports or start duplicate servers.
+- **Plugins:** search installed capabilities and credible sources when a plugin has a concrete benefit. Check compatibility, maintenance, permissions, and usage. Distinguish a candidate from an installed, working, or task-tested plugin. Missing a suitable plugin should not block otherwise feasible work.
+- **GitHub research:** compare a small set of relevant projects when a mature solution, unfamiliar integration, or complex design warrants research. Check real links and evidence, compatibility, maintenance, and licenses. Stop once there is enough evidence to implement. Stars alone do not establish quality or justify changing the stack.
+- **Execution modes:** select a single agent, ordinary subagents, workflow, or Agent Teams based on the task. Consider independent multi-agent review separately. Verify available capabilities and define roles, file ownership, concurrency, and aggregation before delegation.
+- **Permissions and reasoning:** check full access for each new session. Reasoning defaults to High unless you request otherwise; report unsupported settings without silently switching models. Installation and updates do not modify global dsh settings.
+- **Shared files:** while dsh writes, Codex defaults to read-only inspection. Direct edits to the same files require a confirmed stop and handoff. Multiple agents need explicit file ownership or separate worktrees where appropriate.
 
-## Token 异常、预算与恢复
+## Token errors, budgets, and recovery
 
-“token 用完”不代表同一种错误：
+“Out of tokens” can mean different things. Recovery follows the available evidence:
 
-| 证据支持的类型 | 行为 |
+| Condition | Response |
 |---|---|
-| 上下文达到上限 | 优先已核实的压缩功能；原会话不能继续才保存精简交接，在同一原项目新建一个后继会话 |
-| 单次输出达到上限 | 查回复、工具结果和实际文件；从明确断点只续剩余部分，不重做整个任务 |
-| 接口限流 | 依据服务端等待信息与任务预算退避；已有内部重试时不叠加提交，超预算/无进展时停止 |
-| 账户额度或余额不足 | 停止无效重试并保存进度；由用户补充额度或决定已授权的备用配置，不充值、不换 key/账户 |
-| 证据不足或冲突 | 明确未知，补取最小脱敏证据，不猜测 |
+| Context window exhausted | Use a verified compaction capability first. If the original session cannot continue, save a concise handoff and create one successor session in the original project. |
+| Output limit reached | Inspect the response, tool results, and files; continue only the unfinished part from a clear stopping point. |
+| Rate limiting | Respect server retry information and the task budget. Do not stack new submissions on top of internal retries; stop when over budget or making no progress. |
+| Account quota or credit exhausted | Stop ineffective retries and preserve progress. The user supplies credit or chooses an authorized fallback; do not purchase credit or switch keys/accounts. |
+| Insufficient or conflicting evidence | Report the uncertainty and collect minimal redacted evidence instead of guessing. |
 
-交接记录包含目标、约束、项目/分支、已有修改、完成与未完成项、决策、验证、错误和下一步，不复制全聊天或凭据。恢复前重新核对文件、diff、提交状态和后台任务，避免双写及重复执行；恢复成功不等于任务完成，原验收标准继续适用。
+Handoffs record the goal, constraints, project/branch, existing changes, completed and remaining work, decisions, verification, errors, and next steps. They exclude full chat logs and credentials. Before resuming, recheck files, diffs, submission state, and background tasks to prevent duplicate execution and concurrent writes. Recovery does not relax the original acceptance criteria.
 
-用户预算优先，内部重试、压缩和多 Agent 都可能增加接口费用。没有真实后续执行机制时，不承诺关掉当前 Codex 任务后会自动继续。详细规则见 [恢复参考](skills/dsh-dev/references/recovery.md)。
+Your budget takes priority. Retries, compaction, and multiple agents can add API cost. Without an actual scheduled execution mechanism, the skill does not promise to continue automatically after the current Codex task ends. See the [recovery reference (Chinese)](skills/dsh-dev/references/recovery.md).
 
-## 更新与卸载
+## Update and uninstall
 
-官方 skill-installer 不覆盖已有目录。为了保留旧副本并明确限定更新范围，本仓库提供一个仅操作技能文件的[本地维护脚本](tools/manage_skill.py)；它不联网、不启动 dsh、不改个人配置或权限设置。
+The official skill-installer does not overwrite an existing destination. This repository includes a [local maintenance script](tools/manage_skill.py) that only manages skill files: it does not access the network, launch dsh, or change personal configuration or permissions.
 
-先结束当前 dsh 开发与 Codex 技能维护，再取最新源码：
+Finish active dsh development and skill-maintenance tasks first, then get the source:
 
 ```sh
 git clone https://github.com/XSY-28/call-the-whale.git
 cd call-the-whale
-# 已有此独立克隆时，在其中执行 git pull --ff-only
+# For an existing independent clone, run git pull --ff-only inside it.
 python3 tools/manage_skill.py update
 ```
 
-默认目标与随附安装器一致：`$CODEX_HOME/skills/dsh-dev`，否则 `~/.codex/skills/dsh-dev`。如果实际安装在别处，传 `--skills-dir '/absolute/path/to/skills'`；不要更新另一个未被 Codex 使用的副本。更新前将整个旧 skill 保存到 `$CODEX_HOME/backups/dsh-dev`（默认 `~/.codex/backups/dsh-dev`）中的唯一子目录，保留其中的本地修改；新版本不会自动合并自定义技能代码，需对照备份自行处理。失败时恢复旧副本。
+The default target is `$CODEX_HOME/skills/dsh-dev`, otherwise `~/.codex/skills/dsh-dev`. If your skill lives elsewhere, pass `--skills-dir '/absolute/path/to/skills'`. Update the copy Codex actually uses.
 
-卸载（从技能搜索目录移走并保留备份）：
+Before updating, the script backs up the entire old skill in a unique subdirectory under `$CODEX_HOME/backups/dsh-dev`, otherwise `~/.codex/backups/dsh-dev`. Local skill-code changes are preserved in the backup but are not automatically merged into the new version. A failed update restores the old copy.
+
+To uninstall by moving the skill out of the search directory while keeping a backup:
 
 ```sh
 python3 tools/manage_skill.py uninstall
 ```
 
-两种操作均打印实际目标与备份路径，下一轮对话核对是否生效。不会清除默认项目、dsh 会话、用户 profile 或已设置的会话权限；若需要撤回 dsh 权限，请自行在 dsh 中调整。恢复旧版时先停相关任务，再让 Codex 用打印的备份替换同一个 `dsh-dev` 安装目录，保留个人配置。
+Both operations report the actual target and backup paths. Check availability in the next conversation turn. They do not delete default-project settings, handoffs, dsh sessions, profiles, or previously granted permissions. Revoke dsh permissions in dsh itself if desired. To restore an older version, stop related tasks and ask Codex to replace the same installation directory with the reported backup, preserving personal configuration.
 
-## 验证范围与平台
+## Compatibility and verification
 
-完整浏览器工作流仅有 **macOS 上的隔离小任务历史实测**；公开版主要做可移植脚本、安装维护和模拟决策验证，不能外推所有高级模式均已实测。Linux CI 只验证脚本和结构；Windows 未验证，POSIX 权限相关脚本不保证可用。仅 CLI、其他 skills 客户端或缺少内置浏览器工具的环境不能直接运行完整流程。
+| Area | Evidence and limits |
+|---|---|
+| Full browser workflow | Historically tested with an isolated small task on **macOS**; this does not establish coverage of every advanced mode. |
+| Public package | Helper scripts, installation/maintenance, and simulated decisions checked. |
+| Linux | CI checks scripts and package structure, not the full desktop/browser workflow. |
+| Windows | Unverified. Helpers relying on POSIX permissions are not guaranteed to work. |
+| CLI-only or other skill clients | Cannot directly run the complete workflow without the required desktop browser tools. |
 
-dsh 已核对版本为 `0.1.5-rc.2`，版本和 UI 变化时必须重新发现能力。workflow/Teams、插件安装回滚、真实 token 故障和多提供方切换未作完整端到端验证。详见 [验证记录](docs/validation.md)与[兼容性参考](skills/dsh-dev/references/compatibility.md)。
+The previously checked dsh version is **`0.1.5-rc.2`**. Rediscover capabilities when versions or UI change. Workflow/Teams, plugin-install rollback, real token failures, and multi-provider switching have not all received end-to-end testing. See the [validation record (Chinese)](docs/validation.md) and [compatibility reference (Chinese)](skills/dsh-dev/references/compatibility.md).
 
-开发者可运行：
+The skill instructions and detailed supporting references currently remain in Chinese. This update adds an English entry point; it does not claim that every document or interface has been translated.
+
+Developer checks:
 
 ```sh
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
@@ -162,22 +176,34 @@ node tests/acceptance.mjs tests/e2e-fixture
 node --test tests/e2e-fixture/clamp.test.mjs
 ```
 
-Git 必须可用；若 PATH 中的 Git 不能执行，可显式设置 `DSH_DEV_TEST_GIT` 指向已验证的 Git 可执行文件。测试只使用临时配置与临时项目，不访问真实 key 或默认项目。测试依赖和贡献方法见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+Git must work. If Git on `PATH` cannot run, set `DSH_DEV_TEST_GIT` to a verified Git executable. Tests use temporary configuration and projects, not real keys or default-project settings. See [CONTRIBUTING.md (Chinese)](CONTRIBUTING.md).
 
-## 常见问题
+## FAQ
 
-**安装后找不到“呼叫蓝色大肥鱼”？** 检查目录是否仍为 `dsh-dev` 且内部直接有 SKILL.md；用下一轮对话调用 `$dsh-dev`，确认没有重复安装位置。品牌不是调用名。
+**Why do I invoke `$dsh-dev` rather than the repository name?**
 
-**能只安装 skill，然后让它帮我配置 key 吗？** 不可以。先自行使用 dsh 成功获得一次模型回复，再交给 skill。认证问题回到 dsh 处理，不在 Codex 或 Issue 中提供密钥。
+Call the Whale (呼叫蓝色大肥鱼) is the project brand; `call-the-whale` is the repository. The installed directory and technical skill identifier remain **`dsh-dev`**. Its current Codex display name is Chinese. Check that `SKILL.md` is directly inside that directory and that you do not have duplicate installations.
 
-**为什么权限不是项目内沙箱？** 本 skill 的预期模式就是 Full access。已核对的 dsh 将它映射为 `danger-full-access` 与 `never` 审批策略；系统和运行账户仍限制其实际能力。首次启用需要授权，详情见[官方权限说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/interaction/permission-presets/README.md)。
+**Can the skill configure my API key for me?**
 
-**为什么不直接开始？** 可能缺少项目目录、网页工具、首次配置、权限授权或明确验收信息。Codex 应说明实际缺项；普通开发请求不会自动被转交 dsh。
+No. First use dsh yourself and get a successful model response. Handle authentication in dsh, and never send keys through Codex messages or issues.
 
-**运行时断线或限流怎么办？** 继续同一个任务，让 Codex 先查旧会话和后台执行。不要反复点击发送或另开会话；无证据不能判定任务停止。
+**Does full access mean a project-only sandbox?**
 
-**如何反馈？** 提供操作系统、Codex/dsh 版本、缺少的工具名称、最小复现、预期/实际行为、脱敏错误 code 和测试结果。路径换成占位值。不要附 API key、认证网址、cookies、完整聊天日志、私人代码或未脱敏截图。敏感问题先按 [SECURITY.md](SECURITY.md)处理。
+No. In the checked dsh version, Full access maps to `danger-full-access` with the `never` approval policy. Your OS and account still constrain actual access. Enabling it requires authorization. See the [official permission-preset documentation](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/interaction/permission-presets/README.md).
 
-## 许可证与来源
+**Why might Codex ask before starting?**
 
-项目代码、原创规则和文档采用 [MIT](LICENSE)。本项目通过链接参考 dsh 与 Codex 官方接口文档，不打包其源码、运行时、凭据或模型；相应产品仍适用各自许可证与服务条款。来源说明见 [NOTICE.md](NOTICE.md)。
+It may lack a project directory, browser tools, first-run configuration, permission authorization, or a consequential requirement. It should identify the actual missing information. Routine development requests do not automatically activate dsh delegation.
+
+**What if the page disconnects or a request is rate-limited?**
+
+Continue the same task and let Codex check the old session and background work first. Do not repeatedly submit or open new sessions; a disconnected page does not prove that execution stopped.
+
+**How do I report a problem?**
+
+Include your OS, Codex/dsh versions, missing tool names, minimal reproduction, expected/actual behavior, redacted error codes, and test results. Replace private paths with placeholders. Do not attach keys, authenticated URLs, cookies, full chat logs, private code, or unredacted screenshots. For sensitive reports, consult [SECURITY.md (Chinese)](SECURITY.md) first.
+
+## License and sources
+
+Original code, skill instructions, and documentation are available under the [MIT License](LICENSE). The project references official dsh and Codex documentation by link; it does not bundle their source, runtimes, credentials, or models. Those products retain their own licenses and terms. See [NOTICE.md (Chinese)](NOTICE.md).

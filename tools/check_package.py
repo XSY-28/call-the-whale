@@ -8,7 +8,7 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ALLOWED_TOP = {"README.md", "LICENSE", "NOTICE.md", "SECURITY.md", "CONTRIBUTING.md",
+ALLOWED_TOP = {"README.md", "README.zh-CN.md", "LICENSE", "NOTICE.md", "SECURITY.md", "CONTRIBUTING.md",
                ".gitignore", ".github", "skills", "tests", "tools", "docs", "examples"}
 SECRET_PATTERNS = (
     r"/(?:Users|home)/[A-Za-z0-9_. -]+/", r"[A-Z]:\\Users\\[^\\\s]+\\",
