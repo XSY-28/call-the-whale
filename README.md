@@ -8,19 +8,21 @@ Describe the task in Codex. Let the whale get to work.
 
 Call the Whale connects Codex's task planning and independent review with [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) running in the Codex desktop app's embedded browser. Codex prepares the task, follows dsh's progress, inspects the actual changes, and requests corrections when the result does not meet the acceptance criteria.
 
-> **Full access is the intended operating mode.** dsh may read and write local files, run terminal commands, and access the network. Its effective access depends on dsh settings, the operating-system account, and OS restrictions—not just the selected project directory. Use it only in an environment you trust and are willing to authorize.
+> **Full access is the intended development mode (unless you explicitly request a different task permission configuration).** dsh may read and write local files, run terminal commands, and access the network. Its effective access depends on dsh settings, the operating-system account, and OS restrictions—not just the selected project directory. Use it only in an environment you trust and are willing to authorize.
 >
 > **Set up dsh first.** Before using this skill, run dsh yourself at least once, configure your API key, and successfully send a request and receive a model response.
 
-Installing the skill does **not** change dsh's global permission settings or grant authorization. Before first enabling full access, Codex must explain its effects and check your authorization. Existing authorization is reused within its scope; required tool or UI confirmations still apply. Full access does not authorize work outside your task or bypass OS restrictions.
+Installing the skill does **not** change dsh's global permission settings or grant authorization. Before first enabling full access, Codex must explain its effects and check your authorization. Existing authorization is reused within its scope; required tool or UI confirmations still apply. Full access does not authorize work outside your task or bypass OS restrictions. Pure chat and open-only requests do not automatically expand permissions; each new session still checks actual access and reasoning settings. Chat is not a guaranteed sandbox.
 
 This is a **community project, not an official DeepSeek or OpenAI product**. You pay for dsh model API usage; Codex usage limits apply separately. Successful completion and unattended operation are not guaranteed.
 
 ## What it does
 
 - **Opens or reuses dsh:** finds a ready service, starts one when needed, and opens its actual authenticated URL in Codex's embedded browser.
+- **Sends specified messages:** sends your exact text once, confirms acceptance, and waits for the complete reply. Non-project chat needs no default project and does not trigger plugins or development work.
 - **Prepares the work:** turns your request and project constraints into a task with explicit scope and acceptance criteria.
 - **Chooses suitable capabilities:** considers plugins, GitHub research, workflows, Agent Teams, and independent reviews when useful and available.
+- **Supports scoped development modes:** MVP (Minimum Viable Product) focuses on a runnable core flow; agile delivery runs dsh self-review and independent checks before your review each round.
 - **Checks the result:** inspects files and diffs, runs relevant checks, and sends specific feedback to dsh for corrections.
 - **Handles interruptions:** distinguishes context limits, truncated output, rate limits, and exhausted account credit; preserves progress and avoids duplicate work.
 
@@ -60,6 +62,14 @@ After completing dsh's first-run setup and getting a successful model response, 
 Use $dsh-dev to open dsh only. Do not submit a development task.
 ```
 
+For a brief non-project conversation:
+
+```text
+Use $dsh-dev to send “你好”.
+```
+
+Codex uses an identifiable idle chat or creates a new session, checks the actual permissions and reasoning level, and does not add a greeting to an active development task. File, code-review, or editing requests still follow project and acceptance rules.
+
 Then delegate a scoped task. Replace the path below with your project's absolute path, and authorize full access only after reading the notice above:
 
 ```text
@@ -78,7 +88,7 @@ Use $dsh-dev to continue the login-form fix, keeping the original
 session's project and acceptance criteria.
 ```
 
-An open-only request does not require a default project or submit work automatically. Continuing a task uses its original session and project; an ambiguous session or a conflicting new project requires clarification.
+An open-only request needs no default project and submits no task. A non-project message also needs no default project and sends only the requested message. Continuing a task uses its original session and project; an ambiguous session or a conflicting new project requires clarification.
 
 ## Project selection and local settings
 
@@ -88,7 +98,7 @@ Use $dsh-dev to change my default project to /absolute/path/to/another-project.
 Use $dsh-dev to clear my default project.
 ```
 
-An explicitly selected project takes priority for the current task and does not overwrite your default. A new task without a project uses your saved default; if none exists, Codex asks before submitting work. It does not silently choose Codex's current directory, the dsh launch directory, or the workspace last shown in the browser.
+An explicitly selected project takes priority for the current task and does not overwrite your default. A new project task without a project uses your saved default; if none exists, Codex asks before submitting work. It does not silently choose Codex's current directory, the dsh launch directory, or the workspace last shown in the browser.
 
 If you specify a file, it remains the task's target while Codex determines its project root from project evidence. Unclear ownership or an unavailable directory requires clarification. Before submission, Codex checks the full workspace path actually selected in dsh.
 
@@ -97,7 +107,7 @@ If you specify a file, it remains the task's target while Codex determines its p
 | Skill installation | `SKILL.md`, references, and scripts; replaced during updates |
 | Target project | Your explicitly selected or saved default project; changes remain within the task's scope |
 | Local configuration | `$CODEX_HOME/dsh-dev/config.json`, otherwise `~/.codex/dsh-dev/config.json`; changed only when you request setting, changing, or clearing the default |
-| Temporary files and handoffs | Temporary directories are created through OS APIs; durable handoffs belong in an authorized private location outside the project, not an automatically cleaned temporary directory |
+| Temporary files and handoffs | Temporary directories are created through OS APIs; one durable progress/handoff record resolves from the user directory or CODEX_HOME, outside the project and skill installation; it is distinct from config.json and uses atomic replacement and private permissions where supported |
 
 The [configuration example](examples/project-config.example.json) documents the format. Do not store personal configuration in the skill installation or tracked repository files. Use the requests above or the installed `project_config.py`. Updates and uninstall preserve your configuration and handoffs.
 
@@ -105,12 +115,35 @@ The [configuration example](examples/project-config.example.json) documents the 
 
 Codex reads the requirements and project constraints, protects existing changes, chooses an execution approach, and prepares the prompt. dsh is the default code writer. Codex independently examines files, diffs, and execution evidence, then performs relevant tests, builds, or UI checks. dsh saying “done” starts the acceptance check; it does not complete it.
 
-- **Services and sessions:** inspect terminal output first, then processes, listeners, and tabs as needed. Reuse only a confirmed ready dsh service. Otherwise start the current version's supported `npx @deepseek-ai/dsh web --no-open` command in the confirmed project. For an open-only request without a project, a private OS-created temporary directory may be used without saving it as the default. Use the actual authenticated URL; do not guess ports or start duplicate servers.
+- **Services and sessions:** inspect terminal output first, then processes, listeners, and tabs as needed. Reuse only a confirmed ready dsh service. Otherwise start the current version's supported `npx @deepseek-ai/dsh web --no-open` command in the confirmed project. For an open-only or non-project message request without a project, a private OS-created temporary directory may be used without saving it as the default. Use the actual authenticated URL; do not guess ports or start duplicate servers.
 - **Plugins:** search installed capabilities and credible sources when a plugin has a concrete benefit. Check compatibility, maintenance, permissions, and usage. Distinguish a candidate from an installed, working, or task-tested plugin. Missing a suitable plugin should not block otherwise feasible work.
 - **GitHub research:** compare a small set of relevant projects when a mature solution, unfamiliar integration, or complex design warrants research. Check real links and evidence, compatibility, maintenance, and licenses. Stop once there is enough evidence to implement. Stars alone do not establish quality or justify changing the stack.
 - **Execution modes:** select a single agent, ordinary subagents, workflow, or Agent Teams based on the task. Consider independent multi-agent review separately. Verify available capabilities and define roles, file ownership, concurrency, and aggregation before delegation.
-- **Permissions and reasoning:** check full access for each new session. Reasoning defaults to High unless you request otherwise; report unsupported settings without silently switching models. Installation and updates do not modify global dsh settings.
+- **Permissions and reasoning:** check actual permissions for each new session; development defaults to full access with effective authorization and your explicit task settings take priority. Pure chat does not automatically expand access. Reasoning defaults to High unless you request otherwise; report unsupported settings without silently switching models. Installation and updates do not modify global dsh settings.
 - **Shared files:** while dsh writes, Codex defaults to read-only inspection. Direct edits to the same files require a confirmed stop and handoff. Multiple agents need explicit file ownership or separate worktrees where appropriate.
+
+For multiple requirements, keep stable acceptance IDs across submission, corrections, and recovery. Report each as passed, failed, or unverified with independent file, command, or UI evidence. Disclose partial diffs, omitted untracked files, untested platforms, and UI gaps; dsh's self-report is only a clue. A failed or unverified key criterion prevents an overall completion claim. Corrections name the failed IDs and preserve passing behavior and existing user work. Small tasks need only a few sentences.
+
+Long tasks use a few milestones based on dependencies, each with an output, allowed scope, check, and completion evidence. Summarize confirmed substantive progress, current milestone, next step, submission, file writer, and remaining budget. Repeated states/errors are not progress; silence requires checking background work, retries, and waiting interactions before restarting. Persist only when recovery needs it, reuse one private record, and recheck real state before resuming. A stored “stopped” flag or PID is not a lock; switching sessions does not reset the budget.
+
+## MVP, agile delivery, and maintainability
+
+Ask for an **MVP (Minimum Viable Product)** to validate the core user need with a small working product. Provide the core requirements, or let Codex derive them from your goal and clarify consequential ambiguities. dsh implements the core flow; non-core features can wait. Plain UI and disclosed temporary choices are acceptable, while placeholders or fake results cannot stand in for explicitly required behavior. Codex checks the runnable flow before calling the MVP complete.
+
+For **agile delivery**, each round follows **dsh implementation and self-review → Codex independent verification → your review**. You receive a runnable increment, evidence, tradeoffs, and remaining work. The task waits for your feedback before the next round; silence or an old approval does not approve the current round. This review checkpoint applies when you request agile iteration, not to every ordinary task or milestone.
+
+Every development prompt defaults to maintainable code: keep changing configuration and business rules centralized, separate actual change boundaries, follow existing project structure, and avoid speculative frameworks. Sensible constants and test fixtures remain valid. Check a realistic change when useful, such as changing a fee without rewriting the calculation logic. This reduces the cost of expected changes; it cannot guarantee that arbitrary future requirements need no code changes.
+
+```text
+Use $dsh-dev in /absolute/project to build a course-registration MVP.
+Core: save registrations and read them after restart. Defer payment and polish.
+
+Use $dsh-dev in /absolute/project for agile delivery. Each round, have dsh
+self-review, independently verify it, then give me the increment to review
+and wait for my feedback before the next round.
+```
+
+MVP and agile can be combined. Project access, permissions, acceptance, budgets, and recovery still apply. Detailed [development-mode rules](skills/dsh-dev/references/development-modes.md) are in Chinese. Updating this skill does not itself authorize sending a task to dsh.
 
 ## Token errors, budgets, and recovery
 
@@ -143,7 +176,7 @@ python3 tools/manage_skill.py update
 
 The default target is `$CODEX_HOME/skills/dsh-dev`, otherwise `~/.codex/skills/dsh-dev`. If your skill lives elsewhere, pass `--skills-dir '/absolute/path/to/skills'`. Update the copy Codex actually uses.
 
-Before updating, the script backs up the entire old skill in a unique subdirectory under `$CODEX_HOME/backups/dsh-dev`, otherwise `~/.codex/backups/dsh-dev`. Local skill-code changes are preserved in the backup but are not automatically merged into the new version. A failed update restores the old copy.
+Before updating, the script backs up the entire old skill in a unique subdirectory under `$CODEX_HOME/backups/dsh-dev`, otherwise `~/.codex/backups/dsh-dev`. Unknown personal files are preserved in place; edits to known skill files stay in the backup and are not automatically merged. Inspect unique edits before updating. A failed update restores the old copy.
 
 To uninstall by moving the skill out of the search directory while keeping a backup:
 
@@ -187,6 +220,10 @@ Call the Whale (呼叫蓝色大肥鱼) is the project brand; `call-the-whale` is
 **Can the skill configure my API key for me?**
 
 No. First use dsh yourself and get a successful model response. Handle authentication in dsh, and never send keys through Codex messages or issues.
+
+**Do chat and development use the same permission rule?**
+
+Pure chat checks the actual access without automatically expanding it. Development defaults to authorized full access; explicit task settings take priority. Chat does not become a guaranteed sandbox.
 
 **Does full access mean a project-only sandbox?**
 

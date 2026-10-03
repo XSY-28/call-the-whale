@@ -64,6 +64,15 @@ def maintain(action, skills_dir, backup_dir, source=SOURCE):
         previous = Path(temp) / "previous"
         if action == "update":
             shutil.copytree(source, stage)
+            # Preserve unknown personal files in place, not just in the backup.
+            # Known skill files are updated; inspect unique edits before calling.
+            for relative in old.keys() - expected.keys():
+                target = stage / relative
+                if target.exists():
+                    raise ValueError("Personal file conflicts with a new skill directory; inspect backup.")
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(backup / relative, target)
+            expected = dict(expected, **{p: old[p] for p in old.keys() - expected.keys()})
             if inventory(stage) != expected:
                 raise ValueError("Staged copy differs from source.")
         if inventory(destination) != old:

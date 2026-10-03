@@ -43,12 +43,40 @@ class MaintenanceTests(unittest.TestCase):
 
     def test_update_backs_up_local_edits_and_preserves_user_config(self):
         (self.destination / "custom-note.md").write_text("local edits, not repository content")
+        skill = self.destination / "SKILL.md"
+        skill.write_text(skill.read_text() + "\nLocal instruction: inspect before updating.\n")
         original = module.inventory(self.destination)
         result = self.cli("update")
         self.assertEqual(module.inventory(Path(result["backup"])), original)
-        self.assertEqual(module.inventory(self.destination), module.inventory(ROOT / "skills/dsh-dev"))
+        expected = module.inventory(ROOT / "skills/dsh-dev")
+        expected["custom-note.md"] = original["custom-note.md"]
+        self.assertEqual(module.inventory(self.destination), expected)
         self.assertEqual(self.config.read_bytes(), self.config_before)
         self.assertTrue(self.handoff.exists())
+
+    def test_update_preserves_nested_unknown_file_and_permissions(self):
+        personal = self.destination / "personal/notes.md"
+        personal.parent.mkdir()
+        personal.write_text("personal settings: keep")
+        personal.chmod(0o600)
+        result = self.cli("update")
+        self.assertEqual(personal.read_text(), "personal settings: keep")
+        self.assertEqual(personal.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(self.handoff.read_text(), '{"keep":"private progress"}')
+        self.assertEqual(module.inventory(Path(result["backup"]))["personal/notes.md"],
+                         module.inventory(self.destination)["personal/notes.md"])
+
+    def test_unknown_file_conflicting_with_new_directory_keeps_old_install(self):
+        source = self.root / "next-version"
+        shutil.copytree(ROOT / "skills/dsh-dev", source)
+        (self.destination / "personal").write_text("old personal file")
+        (source / "personal").mkdir()
+        (source / "personal/new.md").write_text("new source file")
+        old = module.inventory(self.destination)
+        with self.assertRaises(ValueError):
+            module.maintain("update", self.skills, self.backups, source)
+        self.assertEqual(module.inventory(self.destination), old)
+        self.assertEqual(self.config.read_bytes(), self.config_before)
 
     def test_uninstall_moves_only_skill_and_preserves_config(self):
         original = module.inventory(self.destination)
